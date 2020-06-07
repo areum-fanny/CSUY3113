@@ -27,7 +27,7 @@ float bird = -6.0f;
 float rotate = 0;
 float lastTicks = 0.0f;
 
-GLuint sunTextureID, moonTextureID, rainTextureID, cloudTextureID, pinwheelTextureID, birdTextureID, grassTextureID,pinTextureID;
+GLuint sunTextureID, moonTextureID, rainTextureID, cloudTextureID, pinwheelTextureID, birdTextureID, grassTextureID;
 
 GLuint LoadTexture(const char* filePath) {
     int w, h, n;
@@ -84,7 +84,6 @@ void Initialize() {
     pinwheelTextureID = LoadTexture("pinwheel.png");
     birdTextureID = LoadTexture("bird.png");
     grassTextureID = LoadTexture("grass.png");
-    pinTextureID = LoadTexture("pinwheel.png");
 }
 
 void ProcessInput() {
