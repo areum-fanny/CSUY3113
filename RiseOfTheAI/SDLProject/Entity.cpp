@@ -3,25 +3,21 @@
 Entity::Entity()
 {
     position = glm::vec3(0);
-    speed = 0;
     movement = glm::vec3(0);
-    acceleration = glm::vec3(0);
+    gravity = glm::vec3(0,-9.81f,0);
     velocity = glm::vec3(0);
+    speed = 0;
     modelMatrix = glm::mat4(1.0f);
 }
 
 void Entity::Update(float deltaTime, Entity* platforms, int platformcount)
 {
+    if (state == DEAD || isActive == false || wonGame) return;
+    collidedLeft = false;
+    collidedRight = false;
+    collidedTop = false;
+    collidedBottom = false;
 
-    if (isActive == false || state == DEATH) return;
-
-    bool collidedLeft = false;
-    bool collidedRight = false;
-    bool collidedTop = false;
-    bool collidedBottom = false;
-    if (type == ENEMY) {
-        AI();
-    }
     if (animIndices != NULL) {
         if (glm::length(movement) != 0 || state == SHOOT) {
             animTime += deltaTime;
@@ -32,41 +28,42 @@ void Entity::Update(float deltaTime, Entity* platforms, int platformcount)
                 animIndex++;
                 if (animIndex >= animFrames)
                 {
-                    animIndex = 0;
+                    if (state == SHOOT) {
+                        if (direction == RIGHT) {
+                            animIndices = idleRight;
+                            animFrames = 1;
+                            state = IDLE;
+                        }
+                        else {
+                            animIndices = idleLeft;
+                            animFrames = 1;
+                            state = IDLE;
+                        }
+                    }
+                     animIndex = 0;
                 }
-                
             }
         }
         else {
+            if (state == WALK) {
+                if (direction == RIGHT) {
+                    animIndices = idleRight;
+                }
+                else {
+                    animIndices = idleLeft;
+                }
+            }  
+            else if (state == JUMP) {
+                velocity.y += jumpPower;
+            }
+            state = IDLE;
+            animFrames = 1;
             animIndex = 0;
         }
     }
     
-    if (jump) {
-        jump = false;
-        velocity.y += jumpPower;
-    }
-    velocity.x = movement.x * speed;
-    velocity += acceleration * deltaTime;
-    //position += velocity * deltaTime;
-
-    /*for (int i = 0; i < platformcount; i++)
-    {
-        Entity* platform = &platforms[i];
-        if (CheckCollision(platform))
-        {
-            float ydist = fabs(position.y - platform->position.y);
-            float penetrationY = fabs(ydist - (height / 2.0f) - (platform->height / 2.0f));
-            if (velocity.y > 0) {
-                position.y -= penetrationY;
-                velocity.y = 0;
-            }
-            else if (velocity.y < 0) {
-                position.y += penetrationY;
-                velocity.y = 0;
-            }
-        }
-    }*/
+    velocity.x = movement.x * speed; 
+    velocity += gravity * deltaTime;
 
     position.y += velocity.y * deltaTime; // Move on Y
     CheckCollisionsY(platforms, platformcount);// Fix if needed
@@ -106,8 +103,7 @@ void Entity::DrawSpriteFromTextureAtlas(ShaderProgram* program, GLuint textureID
 
 void Entity::Render(ShaderProgram* program) {
 
-
-    if (isActive ==  false ) return;
+    if (isActive == false) return;
 
     program->SetModelMatrix(modelMatrix);
 
@@ -132,12 +128,11 @@ void Entity::Render(ShaderProgram* program) {
     glDisableVertexAttribArray(program->positionAttribute);
     glDisableVertexAttribArray(program->texCoordAttribute);
 }
-
 bool Entity::CheckCollision(Entity* other) {
-    if (isActive == false || other->isActive == false) return false;
+    if (other->state == DEAD || other->isActive == false || isActive == false) return false;
     float xdist = fabs(position.x - other->position.x) - ((width + other->width) / 2.0f);
     float ydist = fabs(position.y - other->position.y) - ((height + other->height) / 2.0f);
-    //if (other->type == SPIKE && xdist < -0.2 && ydist < -0.2) return true;
+    //if (other->type == OBSTACLE && xdist < -1.0f && ydist < -1.0f) return true;
     if (xdist < 0 && ydist < 0) return true;
 
     return false;
@@ -150,28 +145,44 @@ void Entity::CheckCollisionsY(Entity* objects, int objectCount)
         Entity* object = &objects[i];
         if (CheckCollision(object))
         {
-           
-                float ydist = fabs(position.y - object->position.y);
-                float penetrationY = fabs(ydist - (height / 2.0f) - (object->height / 2.0f));
-                if (velocity.y > 0) {
-                    position.y -= penetrationY;
-                    velocity.y = 0;
-                    collidedTop = true;
-                }
-                else if (velocity.y < 0) {
-                    position.y += penetrationY;
-                    velocity.y = 0;
-                    collidedBottom = true;
-                }
-            if (object->type == SPIKE && type == PLAYER) {
-                state = DEATH;
+
+            float ydist = fabs(position.y - object->position.y);
+            float penetrationY = fabs(ydist - (height / 2.0f) - (object->height / 2.0f));
+            if (velocity.y > 0) {
+                position.y -= penetrationY;
+                velocity.y = 0;
+                collidedTop = true;
             }
-            else if (object->type == ENEMY && type == PLAYER) {
-                state = DEATH;
+            else if (velocity.y < 0) {
+                position.y += penetrationY;
+                velocity.y = 0;
+                collidedBottom = true;
+            }
+            if (object->type == OBSTACLE && type == PLAYER) {
+                state = DEAD;
+            }
+            else if (object->type == PLAYER) {
+                object->state = DEAD;
             }
             else if (object->type == KEY && type == PLAYER) {
                 key = true;
                 object->isActive = false;
+            }
+            else if (object->type == DOOR && type == PLAYER) {
+                if (key) {
+                    wonGame = true;
+                }
+            }
+            else if (type == ENEMY && object->type == BULLET) {
+                object->isActive = false;
+                object->state = IDLE;
+                state = DEAD;
+                isActive = false;
+            }
+            else if (type == BULLET && object->type == PLAYER) {
+                object->state = DEAD;
+                state = IDLE;
+                isActive = false;
             }
         }
     }
@@ -184,61 +195,92 @@ void Entity::CheckCollisionsX(Entity* objects, int objectCount)
         Entity* object = &objects[i];
         if (CheckCollision(object))
         {
-                float xdist = fabs(position.x - object->position.x);
-                float penetrationX = fabs(xdist - (width / 2.0f) - (object->width / 2.0f));
-                if (velocity.x > 0) {
-                    position.x -= penetrationX;
-                    velocity.x = 0;
-                    collidedRight = true;
-                    if (aiType == WALKER) {
-                        direction = LEFT;
-                    }
+            if (object->type == KEY && type == ENEMY) return;
+            float xdist = fabs(position.x - object->position.x);
+            float penetrationX = fabs(xdist - (width / 2.0f) - (object->width / 2.0f));
+            if (velocity.x > 0) {
+                position.x -= penetrationX;
+                velocity.x = 0;
+                collidedRight = true;
+            }
+            else if (velocity.x < 0) {
+                position.x += penetrationX;
+                velocity.x = 0;
+                collidedLeft = true;
+            }
+                
+            if (object->type == OBSTACLE && type == PLAYER) {
+               state = DEAD;
+            }
+            else if (object->type == ENEMY && type == PLAYER) {
+                state = DEAD;
+            }
+            else if (type == ENEMY && object->type == OBSTACLE) {
+                AI();
+            }
+            else if (object->type == PLAYER) {
+                object->state = DEAD;
+            }
+            else if (object->type == KEY && type == PLAYER) {
+                key = true;
+                object->isActive = false;
+            }
+            else if (object->type == DOOR && type == PLAYER) {
+                if (key) {
+                    wonGame = true;
                 }
-                else if (velocity.x < 0) {
-                    position.x += penetrationX;
-                    velocity.x = 0;
-                    collidedLeft = true;
-                    if (aiType == WALKER) {
-                        direction = RIGHT;
-                    }
-                }
-                if (object->type == SPIKE && type == PLAYER) {
-                    state = DEATH;
-                }
-                else if (object->type == ENEMY && type == PLAYER) {
-                    state = DEATH;
-                }
-                else if (object->type == KEY && type == PLAYER) {
-                    key = true;
-                    object->isActive = false;
-                }
-                else if (object->type == ENEMY && type == BULLET) {
-                    object->isActive = false;
-                    object->state = DEATH;
-                    isActive = false;
-                    state = IDLE;
-                }
-                else if (object->type == SPIKE && type == BULLET) {
-                    isActive = false;
-                    state = IDLE;
-                }
+            }
+            else if ((object->type == OBSTACLE || object->type == GROUND || object->type == KEY || object->type == DOOR) && type == BULLET) {
+                isActive = false;
+                state = IDLE;
+            }
+            else if (type == ENEMY && object->type == BULLET) {
+                object->isActive = false;
+                object->state = IDLE;
+                state = DEAD;
+                isActive = false;
+            }
+            else if (type == BULLET && object->type == PLAYER) {
+                object->state = DEAD;
+                state = IDLE;
+                isActive = false;
+            }
         }
     }
 }
 
 void Entity::AI() {
-    switch (aiType) {
+    switch (enemyType) {
         case WALKER:
             AIWalker();
             break;
+        case RAISER:
+            AIRaiser();
+            break;
+    }
+}
+void Entity::AIWalker() {
+    if (collidedRight) {
+        direction = LEFT;
+        animIndices = animLeft;
+        movement.x = -1.0f;
+    }
+    else if(collidedLeft){
+        direction = RIGHT;
+        animIndices = animRight;
+        movement.x = 1.0f;
     }
 }
 
-void Entity::AIWalker() {
-    if (direction == LEFT) {
+void Entity::AIRaiser() {
+    if (collidedRight) {
+        direction = LEFT;
+        animIndices = animLeft;
         movement.x = -1.0f;
     }
-    else {
+    else if (collidedLeft) {
+        direction = RIGHT;
+        animIndices = animRight;
         movement.x = 1.0f;
     }
 }

@@ -4,3 +4,5 @@ C:\Users\shakt\Documents\CSUY3113\LunarLander\SDLProject\Debug\SDLProject.exe
 C:\Users\shakt\Documents\CSUY3113\LunarLander\SDLProject\Debug\SDLProject.pdb
 C:\Users\shakt\Documents\CSUY3113\RiseOfTheAI\SDLProject\Debug\SDLProject.exe
 C:\Users\shakt\Documents\CSUY3113\RiseOfTheAI\SDLProject\Debug\SDLProject.pdb
+C:\Users\shakt\OneDrive\Desktop\SDLProject\Debug\SDLProject.exe
+C:\Users\shakt\OneDrive\Desktop\SDLProject\Debug\SDLProject.pdb
