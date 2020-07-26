@@ -1,2 +1,10 @@
 C:\Users\shakt\OneDrive\Desktop\Summer 2020\CS3113\Templates\VisualStudioSDLProject\SDLProject\Debug\SDLProject.exe
 C:\Users\shakt\OneDrive\Desktop\Summer 2020\CS3113\Templates\VisualStudioSDLProject\SDLProject\Debug\SDLProject.pdb
+C:\Users\shakt\Documents\CSUY3113\LunarLander\SDLProject\Debug\SDLProject.exe
+C:\Users\shakt\Documents\CSUY3113\LunarLander\SDLProject\Debug\SDLProject.pdb
+C:\Users\shakt\Documents\CSUY3113\RiseOfTheAI\SDLProject\Debug\SDLProject.exe
+C:\Users\shakt\Documents\CSUY3113\RiseOfTheAI\SDLProject\Debug\SDLProject.pdb
+C:\Users\shakt\OneDrive\Desktop\SDLProject\Debug\SDLProject.exe
+C:\Users\shakt\OneDrive\Desktop\SDLProject\Debug\SDLProject.pdb
+C:\Users\shakt\Documents\CSUY3113\Platformer\SDLProject\Debug\SDLProject.exe
+C:\Users\shakt\Documents\CSUY3113\Platformer\SDLProject\Debug\SDLProject.pdb
