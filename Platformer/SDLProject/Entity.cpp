@@ -13,7 +13,6 @@ Entity::Entity()
     loseMusic = Mix_LoadWAV("lose.wav");
     doorMusic = Mix_LoadWAV("door.wav");
     speed = 0;
-    
     modelMatrix = glm::mat4(1.0f);
 }
 
