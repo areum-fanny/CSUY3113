@@ -13,12 +13,14 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "ShaderProgram.h"
 #include "Mesh.h"
-enum EntityType { FLOOR, PLAYER, PLATFORM,  CUBE, SHIP, CRATE, WALL};
-enum Type { ENEMY };
+#include <SDL_mixer.h>
+enum EntityType { FLOOR, PLAYER, HEDGE, ENEMY, KEY, WALL, DOOR};
+enum EnemyType { ENEMY1, ENEMY2, ENEMY3, ENEMY4, ENEMY5 };
+
 class Entity {
 public:
     EntityType entityType;
-    Type type;
+    EnemyType enemyType;
     glm::vec3 rotation;
     glm::vec3 position;
     glm::vec3 velocity;
@@ -39,21 +41,32 @@ public:
     bool collidedFront;
     bool collidedBack;
     GLuint textureID;
-
+    int* animIndices = NULL;
+    int animFrames = 0;
+    int animIndex = 0;
+    float animTime = 0;
+    int animCols = 0;
+    int animRows = 0;
     glm::mat4 modelMatrix;
     Mesh* mesh;
-
+    int life = 3;
+    bool won = false; 
+    Mix_Chunk* enemyCollision;
+    Mix_Chunk* keySound;
+    bool endMusic = true;
+    bool key = false;
+    bool isActive = true;
     Entity();
     bool CheckCollision(Entity* other);
-    void CheckCollisionX(Entity* other, int objectCount);
-    void CheckCollisionY(Entity* other, int objectCount);
-    void CheckCollisionZ(Entity* other, int objectCount);
     void Update(float deltaTime, Entity* player, Entity* objects, int objectCount);
     void Render(ShaderProgram* program);
     void DrawBillboard(ShaderProgram* program);
     bool CheckCollisionX(Entity* object);
     bool CheckCollisionY(Entity* object);
     bool CheckCollisionZ(Entity* object);
+    void AI();
+    void DrawSpriteFromTextureAtlas(ShaderProgram* program, GLuint textureID, int index);
+
 };
 
 

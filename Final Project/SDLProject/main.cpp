@@ -1,3 +1,10 @@
+//Name: Shakthi Shrree Ganta Gameshwaran
+//Project Name: 3D Platformer
+//Description of Project: You are stuck in a maze, you need to avoid the enemies, pick up the key and reach the final destination/door. A, S, W and D are used to move around. Spacebar is used to jump.
+//                        The player gets 3 lives and everytime they touch a ghost they lose a life and start the maze from the initial position. 
+
+
+
 #define GL_SILENCE_DEPRECATION
 
 #ifdef _WINDOWS
@@ -16,24 +23,38 @@
 #include "Util.h"
 #include "Entity.h"
 #include "Mesh.h"
-#define OBJECT_COUNT 8
-#define ENEMY_COUNT 10
+#include "Scene.h"
+#include "Level1.h"
+#include "Level2.h"
+#include "Mainmenu.h"
+
+
 SDL_Window* displayWindow;
 bool gameIsRunning = true;
 
 ShaderProgram program;
 glm::mat4 viewMatrix, modelMatrix, projectionMatrix;
 
-struct GameState {
-    Entity* player;
-    Entity* objects;
-    Entity* enemies;
-};
 
-GameState state;
+Scene* currentScene;
+Scene* sceneList[3];
+
+int currentlives;
+bool won;
+Mix_Music* menuMusic;
+Mix_Music* levelMusic;
+Mix_Chunk* wonGame;
+Mix_Chunk* grassSound;
+Mix_Chunk* jumpSound;
+Mix_Chunk* lostGame;
+
+void SwitchToScene(Scene* scene) {
+    currentScene = scene;
+    currentScene->Initialize();
+}
 
 void Initialize() {
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     displayWindow = SDL_CreateWindow("3D!", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_OPENGL);
     SDL_GLContext context = SDL_GL_CreateContext(displayWindow);
     SDL_GL_MakeCurrent(displayWindow, context);
@@ -45,7 +66,15 @@ void Initialize() {
     glViewport(0, 0, 1280, 720);
 
     program.Load("shaders/vertex_textured.glsl", "shaders/fragment_textured.glsl");
-
+    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096);
+    menuMusic = Mix_LoadMUS("horrorBackground.mp3");
+    levelMusic = Mix_LoadMUS("horrorLevel.mp3");
+    wonGame = Mix_LoadWAV("wongame2.wav");
+    Mix_PlayMusic(menuMusic, -1);
+    grassSound = Mix_LoadWAV("grass1.wav");
+    jumpSound = Mix_LoadWAV("jump.wav");
+    lostGame = Mix_LoadWAV("lostGame.wav");
+    Mix_VolumeMusic(MIX_MAX_VOLUME / 4);
     viewMatrix = glm::mat4(1.0f);
     modelMatrix = glm::mat4(1.0f);
     projectionMatrix = glm::perspective(glm::radians(45.0f), 1.777f, 0.1f, 100.0f);
@@ -64,93 +93,13 @@ void Initialize() {
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-    state.player = new Entity();
-    state.player->entityType = PLAYER;
-    state.player->position = glm::vec3(0,3.5f, 0);
-    state.player->acceleration = glm::vec3(0, -9.81f, 0);
-    state.player->speed = 1.0f;
-    state.player->jump = false;
-    state.player->jumpPower = 10.0f;
-    state.player->height = 3.0f;
+    sceneList[0] = new Mainmenu();
+    sceneList[1] = new Level1();
+    sceneList[2] = new Level2();
+
+    SwitchToScene(sceneList[0]);
+
     
-
-    state.objects = new Entity[OBJECT_COUNT];
-
-    Mesh* cubeMesh = new Mesh();
-    cubeMesh->LoadOBJ("cube.obj",40);
-
-    GLuint floorTextureID = Util::LoadTexture("floor.jpg");
-    state.objects[0].textureID = floorTextureID;
-    state.objects[0].mesh = cubeMesh;
-    state.objects[0].rotation = glm::vec3(0, 0, 0);
-    state.objects[0].position = glm::vec3(0, -0.5f, 0);
-    state.objects[0].entityType = FLOOR;
-    state.objects[0].acceleration = glm::vec3(0, 0, 0);
-    state.objects[0].scale = glm::vec3(40, 0.5f, 40);
-    state.objects[0].height = 0.5f;
-    state.objects[0].width = 40.0f;
-    state.objects[0].depth = 40.0f;
-
-    GLuint crateTextureID = Util::LoadTexture("crate1_diffuse.png");
-    Mesh* crateMesh = new Mesh();
-    crateMesh->LoadOBJ("cube.obj", 1);
-    state.objects[1].textureID = crateTextureID;
-    state.objects[1].mesh = crateMesh;
-    state.objects[1].position = glm::vec3(0, 0.5, -3);
-    state.objects[1].entityType = CRATE;
-    state.objects[2].textureID = crateTextureID;
-    state.objects[2].mesh = crateMesh;
-    state.objects[2].position = glm::vec3(0, 0.5, -4);
-    state.objects[2].entityType = CRATE;
-    state.objects[3].textureID = crateTextureID;
-    state.objects[3].mesh = crateMesh;
-    state.objects[3].position = glm::vec3(0, 1.5, -3);
-    state.objects[3].entityType = CRATE;
-
-
-    GLuint wallTextureID = Util::LoadTexture("floor1.jpg");
-
-    Mesh* wallMesh = new Mesh();
-    wallMesh->LoadOBJ("cube.obj", 20);
-    for (int i = 4; i < 8; i++) {
-        state.objects[i].textureID = wallTextureID;
-        state.objects[i].mesh = wallMesh;
-        state.objects[i].rotation = glm::vec3(0, 0, 0);
-        state.objects[i].entityType = CRATE;    
-        state.objects[i].height = 20;
-        state.objects[i].width = 0.5f;
-        state.objects[i].depth = 40;
-        if (i % 2 == 0) { 
-            state.objects[i].scale = glm::vec3(0.5f, 20, 40);
-            state.objects[i].position = glm::vec3(40.5f, 0.5f, 0);
-        }
-        else {
-            
-            state.objects[i].scale = glm::vec3(0.5f, 20, 40);
-            state.objects[i].position = glm::vec3(-40.5f, 0.5f, 0);
-        }
-    }
-    state.objects[6].position = glm::vec3(0, 0.5f, 40.5f);
-    state.objects[6].scale = glm::vec3(40, 20, 0.5f);
-    state.objects[6].width = 40;
-    state.objects[6].depth = 0.5f;
-    state.objects[7].position = glm::vec3(0, 0.5f, -40.5f);
-    state.objects[7].scale = glm::vec3(40, 20, 0.5f);
-    state.objects[7].width = 40;
-    state.objects[7].depth = 0.5f;
-
-
-    state.enemies = new Entity[ENEMY_COUNT];
-    GLuint enemyTextureID = Util::LoadTexture("ctg.png");
-    for (int i = 0; i < ENEMY_COUNT; i++) {
-        state.enemies[i].billboard = true;
-        state.enemies[i].textureID = enemyTextureID;
-        state.enemies[i].position = glm::vec3(rand() % 20 - 10, 0.5f, rand() % 20 - 10);
-        state.enemies[i].rotation = glm::vec3(0, 0, 0);
-        state.enemies[i].acceleration = glm::vec3(0, 0, 0);
-        state.enemies[i].entityType = CRATE;
-        state.enemies[i].type = ENEMY;
-    }
 }
 
 
@@ -162,41 +111,47 @@ void ProcessInput() {
         case SDL_WINDOWEVENT_CLOSE:
             gameIsRunning = false;
             break;
-
+        
         case SDL_KEYDOWN:
             switch (event.key.keysym.sym) {
-            case SDLK_SPACE:
-                if (state.player->collidedBottom) {
-                    state.player->jump = true;
-                    break;
+            case SDLK_RETURN:
+                if (currentScene->state.level == MENU) {
+                    currentScene->state.nextScene = 1;
+                    Mix_HaltMusic();
+                    Mix_PlayMusic(levelMusic, -1);
+                    
                 }
-
+                break;
+            case SDLK_SPACE:
+                if (currentScene->state.player->collidedBottom && currentScene->state.level != MENU) {
+                    currentScene->state.player->jump = true;
+                    Mix_PlayChannel(-1, jumpSound, 0);
+                }
+                break;
             }
             break;
         }
     }
     const Uint8* keys = SDL_GetKeyboardState(NULL);
-    if (keys[SDL_SCANCODE_A]) {
-        state.player->rotation.y += 1.0f;
+    if (keys[SDL_SCANCODE_A] && !(currentScene->state.level == MENU)) {
+        currentScene->state.player->rotation.y += 1.0f;
     }
-    else if (keys[SDL_SCANCODE_D]) {
-        state.player->rotation.y -= 1.0f;
+    else if (keys[SDL_SCANCODE_D] && !(currentScene->state.level == MENU)) {
+        currentScene->state.player->rotation.y -= 1.0f;
     }
-    state.player->velocity.x = 0;
-    state.player->velocity.z = 0;
-    if (keys[SDL_SCANCODE_W]) {
-        state.player->velocity.z = cos(glm::radians(state.player->rotation.y)) * -10.0f;
-        state.player->velocity.x = sin(glm::radians(state.player->rotation.y)) * -10.0f;
+
+    currentScene->state.player->velocity.x = 0;
+    currentScene->state.player->velocity.z = 0;
+
+    if (keys[SDL_SCANCODE_W] && (currentScene->state.level == LEVEL1)) {
+        currentScene->state.player->velocity.z = cos(glm::radians(currentScene->state.player->rotation.y)) * -3.0f;
+        currentScene->state.player->velocity.x = sin(glm::radians(currentScene->state.player->rotation.y)) * -3.0f;
+        Mix_PlayChannel(-1, grassSound, 0);
     }
-    else if (keys[SDL_SCANCODE_S]) {
-        state.player->velocity.z = cos(glm::radians(state.player->rotation.y)) * 10.0f;
-        state.player->velocity.x = sin(glm::radians(state.player->rotation.y)) * 10.0f;
-    }
-    if (keys[SDL_SCANCODE_UP]) {
-        state.player->rotation.x += 1.0f;
-    }
-    else if (keys[SDL_SCANCODE_DOWN]) {
-        state.player->rotation.x -= 1.0f;
+    else if (keys[SDL_SCANCODE_S] && (currentScene->state.level == LEVEL1)) {
+        currentScene->state.player->velocity.z = cos(glm::radians(currentScene->state.player->rotation.y)) * 3.0f;
+        currentScene->state.player->velocity.x = sin(glm::radians(currentScene->state.player->rotation.y)) * 3.0f;
+        Mix_PlayChannel(-1, grassSound, 0);
     }
 }
 
@@ -215,32 +170,35 @@ void Update() {
         return;
     }
     while (deltaTime >= FIXED_TIMESTEP) {
-        state.player->Update(FIXED_TIMESTEP,state.player,state.objects,OBJECT_COUNT);
-        for (int i = 0; i < OBJECT_COUNT; i++) {
-            state.objects[i].Update(FIXED_TIMESTEP, state.player, state.objects, OBJECT_COUNT);
-        }
-        for (int i = 0; i < ENEMY_COUNT; i++) {
-            state.enemies[i].Update(FIXED_TIMESTEP, state.player, state.enemies, ENEMY_COUNT);
-        }
+        currentScene->Update(FIXED_TIMESTEP);
         deltaTime -= FIXED_TIMESTEP;
     }
     accumulator = deltaTime;
+    if (currentScene->state.player->life == 0) {
 
+        currentScene->state.nextScene = 2;
+    }
     viewMatrix = glm::mat4(1.0f);
-    viewMatrix = glm::rotate(viewMatrix,glm::radians(state.player->rotation.y), glm::vec3(0, -1.0f, 0));
-    viewMatrix = glm::translate(viewMatrix, -state.player->position);
+    viewMatrix = glm::rotate(viewMatrix,glm::radians(currentScene->state.player->rotation.y), glm::vec3(0, -1.0f, 0));
+    viewMatrix = glm::translate(viewMatrix, -currentScene->state.player->position);
+    if (currentScene->state.level == LEVEL2) {
+        if (currentScene->state.player->life == 0) { 
+                  
+            Mix_PlayChannel(-1, lostGame, 0);
+            currentScene->state.player->endMusic = false;
+        }
+        else {
+            Mix_PlayChannel(-1, wonGame, 0);
+            currentScene->state.player->endMusic = false;
+        }
+    }
 }
 
 
 void Render() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     program.SetViewMatrix(viewMatrix);
-    for (int i = 0; i < OBJECT_COUNT; i++) {
-        state.objects[i].Render(&program);
-    }
-    for (int i = 0; i < ENEMY_COUNT; i++) {
-        state.enemies[i].Render(&program);
-    }
+    currentScene->Render(&program);
     SDL_GL_SwapWindow(displayWindow);
 
 }
@@ -255,6 +213,14 @@ int main(int argc, char* argv[]) {
     while (gameIsRunning) {
         ProcessInput();
         Update();
+        if (currentScene->state.nextScene >= 0) {
+            currentlives = currentScene->state.player->life;
+            won = currentScene->state.player->won;
+            SwitchToScene(sceneList[currentScene->state.nextScene]);
+            currentScene->state.player->life = currentlives;
+            currentScene->state.player->won = won;
+            
+        }
         Render();
     }
 

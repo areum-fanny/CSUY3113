@@ -256,7 +256,6 @@ int main(int argc, char* argv[]) {
         ProcessInput();
         Update();
         if (currentScene->state.nextScene >= 0) {
-            
             SwitchToScene(sceneList[currentScene->state.nextScene]);
             currentScene->state.player->life = currentlives;
         }
