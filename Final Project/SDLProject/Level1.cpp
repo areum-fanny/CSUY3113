@@ -14,7 +14,7 @@ void Level1::Initialize() {
     state.player->acceleration = glm::vec3(0, -9.81f, 0);
     state.player->speed = 1.0f;
     state.player->jump = false;
-    state.player->jumpPower = 7.5f;
+    state.player->jumpPower = 6.5f;
     state.player->height = 3.0f;
     state.player->width = 0.5f;
     state.player->depth = 0.5f;
